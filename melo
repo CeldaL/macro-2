@@ -1,0 +1,61 @@
+local Players = game:GetService("Players")
+local InputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local plr = Players.LocalPlayer
+local char = plr.Character or plr.CharacterAdded:Wait()
+local hum = char:WaitForChild("Humanoid")
+
+local events = ReplicatedStorage:WaitForChild("Events")
+local anims = ReplicatedStorage:WaitForChild("Animations")
+
+-- Usa la animación por defecto del juego
+local punchAnim = hum:LoadAnimation(anims:WaitForChild("combat1")) -- puedes cambiar "combat1" si hay otra por defecto
+
+-- Variables
+local punching = false
+local combo = 1
+local cooldown = false
+local hitDelay = 4.7 -- Tiempo mínimo entre golpes (1 segundo)
+
+-- Solo un golpe por clic, con cooldown
+local function SingleHit()
+    if hum.Health <= 0 or cooldown then return end
+
+    cooldown = true
+
+    -- Reproduce la animación
+    punchAnim:Play()
+
+    -- Solo un golpe
+    events.Punch:FireServer(0.1, 0, combo)
+
+    combo = combo + 1
+    if combo > 5 then combo = 1 end
+
+    -- Esperar antes de permitir otro golpe
+    task.delay(hitDelay, function()
+        cooldown = false
+    end)
+end
+
+-- Input
+InputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.UserInputType == Enum.UserInputType.MouseButton1 then
+        punching = true
+        SingleHit()
+    end
+end)
+
+InputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        punching = false
+    end
+end)
+
+-- En caso de reaparecer
+plr.CharacterAdded:Connect(function(newChar)
+    char = newChar
+    hum = char:WaitForChild("Humanoid")
+    punchAnim = hum:LoadAnimation(anims:WaitForChild("combat1"))
+end)
